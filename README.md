@@ -8,6 +8,7 @@ Built as a production-shaped monorepo — **FastAPI + SQLAlchemy 2 (async) + Pos
 
 ## Contents
 
+- [Architecture & working guide](docs/ARCHITECTURE.md)
 - [Demo accounts](#demo-accounts)
 - [What you can demo](#what-you-can-demo)
 - [Tech stack](#tech-stack)
@@ -61,6 +62,12 @@ The login screen has one-click demo buttons for these four accounts. The seed al
 - Regenerate the AI draft for a chosen category; the response is only visible to admins.
 - Author portfolio view with open tickets and pending royalties.
 
+## Screens
+
+| Admin queue | Ticket workspace | Author dashboard |
+| --- | --- | --- |
+| ![Admin support queue](docs/screenshots/admin-queue.png) | ![Admin ticket workspace](docs/screenshots/admin-workspace.png) | ![Author dashboard](docs/screenshots/author-dashboard.png) |
+
 ## Tech stack
 
 | Layer | Choice |
@@ -106,6 +113,9 @@ bookleaf-portal/
 │   ├── nginx.conf
 │   └── .env.example
 ├── docker-compose.yml
+├── docs/
+│   ├── ARCHITECTURE.md     # deep-dive guide: system design, flows, trade-offs
+│   └── screenshots/        # admin queue/workspace + author dashboard
 ├── WRITEUP.md
 └── README.md
 ```
