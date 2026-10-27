@@ -1,0 +1,84 @@
+name: bookleaf-portal
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bookleaf
+      POSTGRES_PASSWORD: bookleaf
+      POSTGRES_DB: bookleaf
+    volumes:
+      - bookleaf_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookleaf -d bookleaf"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql+asyncpg://bookleaf:bookleaf@db:5432/bookleaf
+      AUTO_CREATE_TABLES: "false"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      JWT_SECRET: ${JWT_SECRET:-compose-only-secret-change-before-deploying}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      DISPLAY_TIMEZONE: ${DISPLAY_TIMEZONE:-Asia/Kolkata}
+      SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:-password123}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@bookleaf.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-password123}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com/v1}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-8}
+      AI_MAX_RETRIES: ${AI_MAX_RETRIES:-1}
+      AI_TOTAL_TIMEOUT_SECONDS: ${AI_TOTAL_TIMEOUT_SECONDS:-20}
+      AI_TWO_PASS: ${AI_TWO_PASS:-false}
+      AI_FALLBACK_PROVIDER: ${AI_FALLBACK_PROVIDER:-}
+      AI_FALLBACK_BASE_URL: ${AI_FALLBACK_BASE_URL:-}
+      AI_FALLBACK_API_KEY: ${AI_FALLBACK_API_KEY:-}
+      AI_FALLBACK_MODEL: ${AI_FALLBACK_MODEL:-}
+    command:
+      - sh
+      - -c
+      - >
+        alembic upgrade head &&
+        python -m app.seed &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  bookleaf_pgdata:
