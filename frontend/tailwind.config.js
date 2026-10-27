@@ -4,21 +4,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: "#F6F3EB",
-        cream: "#FBF9F4",
-        ink: "#16211B",
+        // BookLeaf brand: white page, coral accent, near-black surfaces.
+        paper: "#F7F6F3",
+        cream: "#FFFFFF",
+        ink: "#171717",
+        // The `forest` token name is kept for compatibility; the scale is the
+        // BookLeaf coral/rose ramp, with 950 reserved for near-black surfaces.
         forest: {
-          50: "#EEF5F0",
-          100: "#D8E9DE",
-          200: "#B3D4C0",
-          300: "#85B89B",
-          400: "#569876",
-          500: "#387C5C",
-          600: "#296349",
-          700: "#21503C",
-          800: "#1B4031",
-          900: "#163429",
-          950: "#0B211A",
+          50: "#FFF1F3",
+          100: "#FFE1E5",
+          200: "#FFC7CE",
+          300: "#FBA6B1",
+          400: "#F57F8E",
+          500: "#F26979",
+          600: "#D13349",
+          700: "#AE2A3E",
+          800: "#8C2333",
+          900: "#6B1D29",
+          950: "#161616",
         },
         gold: {
           50: "#FBF5E8",
@@ -49,8 +52,8 @@ export default {
         display: ["Iowan Old Style", "Palatino Linotype", "Georgia", "ui-serif", "serif"],
       },
       boxShadow: {
-        card: "0 1px 2px rgba(22,33,27,0.04), 0 12px 30px -18px rgba(22,33,27,0.22)",
-        lift: "0 24px 60px -30px rgba(11,33,26,0.45)",
+        card: "0 1px 2px rgba(23,23,23,0.04), 0 12px 30px -18px rgba(23,23,23,0.22)",
+        lift: "0 24px 60px -30px rgba(23,23,23,0.45)",
       },
       animation: {
         "fade-in": "fadeIn 240ms ease-out both",

@@ -8,7 +8,7 @@ type Size = "sm" | "md" | "lg" | "icon";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-forest-800 text-cream shadow-sm hover:bg-forest-700 active:bg-forest-900 disabled:bg-forest-800/50",
+    "bg-forest-600 text-cream shadow-sm hover:bg-forest-700 active:bg-forest-800 disabled:bg-forest-600/50",
   secondary:
     "border border-stone-300 bg-white text-ink shadow-sm hover:border-stone-400 hover:bg-stone-50",
   ghost: "text-stone-600 hover:bg-stone-100 hover:text-ink",

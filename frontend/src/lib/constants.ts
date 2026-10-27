@@ -21,14 +21,14 @@ export const ROLLOVER_THRESHOLD_INR = 1000;
 export const STATUS_STYLES: Record<TicketStatus, string> = {
   Open: "bg-gold-50 text-gold-700 ring-gold-200",
   "In Progress": "bg-sky-50 text-sky-700 ring-sky-200",
-  Resolved: "bg-forest-50 text-forest-700 ring-forest-200",
+  Resolved: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   Closed: "bg-stone-100 text-stone-600 ring-stone-200",
 };
 
 export const STATUS_DOT: Record<TicketStatus, string> = {
   Open: "bg-gold-500",
   "In Progress": "bg-sky-500",
-  Resolved: "bg-forest-500",
+  Resolved: "bg-emerald-500",
   Closed: "bg-stone-400",
 };
 

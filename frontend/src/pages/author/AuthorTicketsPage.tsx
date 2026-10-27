@@ -82,7 +82,7 @@ export function AuthorTicketsPage() {
               className={cn(
                 "focus-ring shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition",
                 status === tab.key
-                  ? "bg-forest-900 text-cream shadow-sm"
+                  ? "bg-forest-600 text-cream shadow-sm"
                   : "text-stone-500 hover:bg-stone-100 hover:text-ink",
               )}
             >

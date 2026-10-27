@@ -356,10 +356,10 @@ export function NewTicketPage() {
             </CardContent>
           </Card>
 
-          <div className="rounded-2xl border border-gold-200/70 bg-gold-50/60 p-4">
+          <div className="rounded-2xl border border-forest-200/70 bg-forest-50/60 p-4">
             <div className="flex items-center gap-2">
-              <Lightbulb size={14} className="text-gold-700" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-gold-800">
+              <Lightbulb size={14} className="text-forest-600" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-forest-800">
                 Helpful to include
               </p>
             </div>
@@ -370,7 +370,7 @@ export function NewTicketPage() {
                 "Photos for print or quality issues",
                 "The launch date you are working towards",
               ].map((tip) => (
-                <li key={tip} className="flex items-start gap-1.5 text-[10px] leading-relaxed text-gold-900/80">
+                <li key={tip} className="flex items-start gap-1.5 text-[10px] leading-relaxed text-forest-900/80">
                   <CheckCircle2 size={10} className="mt-0.5 shrink-0" />
                   {tip}
                 </li>

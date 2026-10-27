@@ -64,9 +64,13 @@ The login screen has one-click demo buttons for these four accounts. The seed al
 
 ## Screens
 
-| Admin queue | Ticket workspace | Author dashboard |
-| --- | --- | --- |
-| ![Admin support queue](docs/screenshots/admin-queue.png) | ![Admin ticket workspace](docs/screenshots/admin-workspace.png) | ![Author dashboard](docs/screenshots/author-dashboard.png) |
+| Admin queue | Ticket workspace | Author dashboard | Sign in |
+| --- | --- | --- | --- |
+| ![Admin support queue](docs/screenshots/admin-queue.png) | ![Admin ticket workspace](docs/screenshots/admin-workspace.png) | ![Author dashboard](docs/screenshots/author-dashboard.png) | ![Sign in](docs/screenshots/login.png) |
+
+The interface uses the BookLeaf palette: coral `#F26979` accents on near-black `#161616`
+surfaces, white cards and an off-white `#F7F6F3` page. Amber is reserved for warning and
+status states, so semantic meaning survives the rebrand.
 
 ## Tech stack
 
@@ -115,7 +119,7 @@ bookleaf-portal/
 ├── docker-compose.yml
 ├── docs/
 │   ├── ARCHITECTURE.md     # deep-dive guide: system design, flows, trade-offs
-│   └── screenshots/        # admin queue/workspace + author dashboard
+│   └── screenshots/        # sign-in, admin queue/workspace, author dashboard
 ├── WRITEUP.md
 └── README.md
 ```

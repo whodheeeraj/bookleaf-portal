@@ -9,15 +9,15 @@ import {
   MessagesSquare,
   PlusCircle,
   Sparkles,
-  Sprout,
   Users,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "@/auth/AuthContext";
 import { Avatar } from "@/components/ui/Avatar";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { useAdminStats, useHealth } from "@/hooks/queries";
 import { useRealtime } from "@/hooks/useRealtime";
 import { cn } from "@/lib/utils";
@@ -53,9 +53,25 @@ function pageTitle(pathname: string, isAdmin: boolean): string {
   return isAdmin ? "Support" : "Author portal";
 }
 
+function isNavActive(pathname: string, item: NavItem): boolean {
+  // `/app/tickets/:id` belongs to Support tickets, not the New request form.
+  if (item.to === "/app/tickets") {
+    return (
+      pathname === "/app/tickets" ||
+      (pathname.startsWith("/app/tickets/") && !pathname.startsWith("/app/tickets/new"))
+    );
+  }
+  // Keep the queue highlighted while reading a ticket from it.
+  if (item.to === "/admin") {
+    return pathname === "/admin" || pathname.startsWith("/admin/tickets/");
+  }
+  if (item.end) return pathname === item.to;
+  return pathname === item.to || pathname.startsWith(`${item.to}/`);
+}
+
 function LiveChip({ status }: { status: "connecting" | "live" | "offline" }) {
   const meta = {
-    live: { label: "Live", dot: "bg-forest-500", className: "text-forest-700" },
+    live: { label: "Live", dot: "bg-forest-500", className: "text-forest-600" },
     connecting: { label: "Connecting", dot: "bg-gold-400 animate-pulse-soft", className: "text-gold-700" },
     offline: { label: "Polling", dot: "bg-stone-400", className: "text-stone-500" },
   }[status];
@@ -79,6 +95,7 @@ function LiveChip({ status }: { status: "connecting" | "live" | "offline" }) {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth();
   const { data: health } = useHealth();
+  const { pathname } = useLocation();
   const isAdmin = user?.role === "ADMIN";
   const { data: stats } = useAdminStats(isAdmin);
   const nav = isAdmin ? ADMIN_NAV : AUTHOR_NAV;
@@ -87,65 +104,58 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-forest-950 text-cream">
       <div className="flex items-center gap-3 px-5 pb-5 pt-6">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-300 text-forest-950 shadow-sm">
-          <Sprout size={22} strokeWidth={2.2} />
-        </span>
+        <BrandMark className="h-10 w-10" />
         <div className="min-w-0">
-          <p className="font-display text-lg font-semibold leading-none tracking-tight">BookLeaf</p>
-          <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.18em] text-forest-300">
+          <p className="font-sans text-lg font-semibold leading-none tracking-tight">BookLeaf</p>
+          <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.18em] text-white/45">
             Author support
           </p>
         </div>
       </div>
 
       <nav className="mt-2 flex-1 space-y-1 px-3">
-        <p className="px-3 pb-2 pt-3 text-[9px] font-bold uppercase tracking-[0.2em] text-forest-400/80">
+        <p className="px-3 pb-2 pt-3 text-[9px] font-bold uppercase tracking-[0.2em] text-white/35">
           {isAdmin ? "Operations" : "Your workspace"}
         </p>
         {nav.map((item) => {
           const Icon = item.icon;
+          const active = isNavActive(pathname, item);
           return (
-            <NavLink
+            <Link
               key={item.to}
               to={item.to}
-              end={item.end}
               onClick={onNavigate}
-              className={({ isActive }) =>
-                cn(
-                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition",
-                  isActive
-                    ? "bg-cream/10 text-cream shadow-[inset_0_0_0_1px_rgba(251,249,244,0.08)]"
-                    : "text-forest-200/80 hover:bg-cream/5 hover:text-cream",
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    size={17}
-                    className={cn(
-                      "shrink-0 transition",
-                      isActive ? "text-gold-300" : "text-forest-400 group-hover:text-forest-200",
-                    )}
-                  />
-                  <span className="flex-1">{item.label}</span>
-                  {item.to === "/admin" && openCount ? (
-                    <span className="rounded-full bg-gold-300/15 px-2 py-0.5 text-[10px] font-bold text-gold-200">
-                      {openCount}
-                    </span>
-                  ) : null}
-                  {isActive ? <ChevronRight size={13} className="text-forest-400" /> : null}
-                </>
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition",
+                active
+                  ? "bg-cream/10 text-cream shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+                  : "text-white/60 hover:bg-white/5 hover:text-cream",
               )}
-            </NavLink>
+            >
+              <Icon
+                size={17}
+                className={cn(
+                  "shrink-0 transition",
+                  active ? "text-forest-400" : "text-white/40 group-hover:text-white/75",
+                )}
+              />
+              <span className="flex-1">{item.label}</span>
+              {item.to === "/admin" && openCount ? (
+                <span className="rounded-full bg-forest-500/20 px-2 py-0.5 text-[10px] font-bold text-forest-300">
+                  {openCount}
+                </span>
+              ) : null}
+              {active ? <ChevronRight size={13} className="text-white/35" /> : null}
+            </Link>
           );
         })}
       </nav>
 
       <div className="mx-3 mb-3 rounded-xl border border-cream/10 bg-cream/[0.04] p-3">
         <div className="flex items-center gap-2">
-          <Sparkles size={13} className="text-gold-300" />
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-forest-300">
+          <Sparkles size={13} className="text-forest-400" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
             AI desk
           </p>
           <span
@@ -158,7 +168,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <p className="mt-2 text-[11px] font-medium leading-snug text-cream">
           {health?.ai.mode === "llm" ? health.ai.model : "Deterministic rules engine"}
         </p>
-        <p className="mt-0.5 text-[10px] leading-relaxed text-forest-300/80">
+        <p className="mt-0.5 text-[10px] leading-relaxed text-white/40">
           {health?.ai.mode === "llm"
             ? `LLM triage · ${health.ai.fallback_enabled ? "fallback armed" : "single engine"}`
             : "No API key needed — demo-safe triage"}
@@ -170,7 +180,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <Avatar name={user?.name ?? "BookLeaf"} seed={user?.id} size="sm" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-cream">{user?.name}</p>
-            <p className="truncate text-[10px] text-forest-300">
+            <p className="truncate text-[10px] text-white/45">
               {isAdmin ? "Support admin" : "Author account"}
             </p>
           </div>
@@ -179,7 +189,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             onClick={logout}
             title="Sign out"
             aria-label="Sign out"
-            className="rounded-lg p-1.5 text-forest-300 transition hover:bg-cream/10 hover:text-cream"
+            className="rounded-lg p-1.5 text-white/45 transition hover:bg-cream/10 hover:text-cream"
           >
             <LogOut size={15} />
           </button>
@@ -226,7 +236,7 @@ export function AppShell() {
               type="button"
               onClick={() => setMobileOpen(false)}
               aria-label="Close navigation"
-              className="absolute right-3 top-3 rounded-lg p-1.5 text-forest-200 hover:bg-cream/10"
+              className="absolute right-3 top-3 rounded-lg p-1.5 text-white/70 hover:bg-cream/10"
             >
               <X size={18} />
             </button>

@@ -112,7 +112,7 @@ export function AdminQueuePage() {
           <span className="flex flex-wrap items-center gap-2">
             Support queue
             {stats ? (
-              <span className="rounded-full bg-forest-900 px-2.5 py-1 text-[11px] font-semibold text-cream">
+              <span className="rounded-full bg-forest-600 px-2.5 py-1 text-[11px] font-semibold text-cream">
                 {unresolved} unresolved
               </span>
             ) : null}

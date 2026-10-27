@@ -27,7 +27,7 @@ export function Field({
       {label ? (
         <label htmlFor={htmlFor} className="flex items-center gap-1 text-xs font-semibold text-stone-700">
           {label}
-          {required ? <span className="text-clay">*</span> : null}
+          {required ? <span className="text-forest-600">*</span> : null}
         </label>
       ) : null}
       {children}

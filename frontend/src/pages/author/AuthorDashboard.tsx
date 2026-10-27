@@ -297,8 +297,8 @@ export function AuthorDashboard() {
 
           <div className="overflow-hidden rounded-2xl bg-forest-950 p-5 text-cream shadow-lift">
             <div className="flex items-center gap-2">
-              <Sparkles size={14} className="text-gold-300" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-forest-300">
+              <Sparkles size={14} className="text-forest-400" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">
                 Support at a glance
               </p>
             </div>
@@ -306,18 +306,18 @@ export function AuthorDashboard() {
               Replies in under one business day, with your book context already in hand.
             </p>
             <div className="mt-4 space-y-2.5 border-t border-cream/10 pt-4 text-[11px]">
-              <div className="flex items-center gap-2 text-forest-200/90">
-                <Clock3 size={12} className="text-gold-300" />
+              <div className="flex items-center gap-2 text-white/75">
+                <Clock3 size={12} className="text-forest-400" />
                 Monday–Saturday, 10:00–19:00 IST
               </div>
-              <div className="flex items-center gap-2 text-forest-200/90">
-                <ShieldCheck size={12} className="text-gold-300" />
+              <div className="flex items-center gap-2 text-white/75">
+                <ShieldCheck size={12} className="text-forest-400" />
                 {healthQuery.data?.ai.mode === "llm"
                   ? "AI-assisted triage · human approved"
                   : "Deterministic triage · human approved"}
               </div>
-              <div className="flex items-center gap-2 text-forest-200/90">
-                <MessageSquare size={12} className="text-gold-300" />
+              <div className="flex items-center gap-2 text-white/75">
+                <MessageSquare size={12} className="text-forest-400" />
                 support@bookleaf.com
               </div>
             </div>

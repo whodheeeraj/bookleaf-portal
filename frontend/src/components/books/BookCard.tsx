@@ -10,8 +10,8 @@ import type { Book } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const COVER_TONES = [
-  "from-forest-900 via-forest-800 to-forest-600",
-  "from-gold-600 via-gold-500 to-gold-300",
+  "from-forest-900 via-forest-800 to-forest-500",
+  "from-stone-900 via-stone-800 to-stone-600",
   "from-slate-900 via-slate-700 to-teal-700",
   "from-rose-900 via-rose-800 to-orange-600",
   "from-indigo-950 via-indigo-800 to-sky-600",

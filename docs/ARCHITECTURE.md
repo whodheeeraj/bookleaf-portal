@@ -894,7 +894,12 @@ Drafts are never auto-sent. The human explicitly reviews and sends.
 
 ### 11.7 UI system
 
-- Tailwind with a BookLeaf palette (deep green, cream, amber accents).
+- Tailwind with the BookLeaf brand palette: coral `#F26979` accent, near-black
+  `#161616` surfaces, white cards and an off-white `#F7F6F3` page. Amber is retained only
+  for warning/status semantics so it never competes with the brand.
+- The logo mark (`src/components/ui/BrandMark.tsx`, `public/favicon.svg`) is a coral tile
+  with a white diagonal slash; the wordmark is set in the sans face, while page headings
+  keep the display serif.
 - Shared primitives keep spacing, borders, focus rings and disabled states consistent.
 - `useDocumentTitle` keeps the browser tab in sync with the route.
 - Toasts confirm mutations and surface API errors.

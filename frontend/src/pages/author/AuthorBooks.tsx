@@ -86,7 +86,7 @@ export function AuthorBooks() {
             className={cn(
               "focus-ring inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-semibold transition",
               filter === item.key
-                ? "bg-forest-900 text-cream shadow-sm"
+                ? "bg-forest-600 text-cream shadow-sm"
                 : "bg-white text-stone-600 ring-1 ring-inset ring-stone-200 hover:bg-stone-50",
             )}
           >

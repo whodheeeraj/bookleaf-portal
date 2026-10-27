@@ -226,7 +226,7 @@ export function ContextPanel({
                 type="button"
                 disabled={saving}
                 onClick={() => onPatch({ assigned_admin_id: adminId })}
-                className="focus-ring rounded-lg bg-forest-800 px-2.5 py-1 text-[10px] font-semibold text-cream transition hover:bg-forest-700 disabled:opacity-50"
+                className="focus-ring rounded-lg bg-forest-600 px-2.5 py-1 text-[10px] font-semibold text-cream transition hover:bg-forest-700 disabled:opacity-50"
               >
                 Assign to me
               </button>

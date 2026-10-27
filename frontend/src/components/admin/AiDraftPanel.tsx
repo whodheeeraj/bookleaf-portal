@@ -83,7 +83,7 @@ export function AiDraftPanel({
     <Card className="overflow-hidden">
       <div className="border-b border-forest-100 bg-gradient-to-r from-forest-50/80 to-cream px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-forest-800 text-gold-300">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-forest-500 text-white">
             <Sparkles size={13} />
           </span>
           <div>

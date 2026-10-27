@@ -326,18 +326,18 @@ export function AuthorTicketDetailPage() {
           </Card>
 
           <div className="rounded-2xl bg-forest-950 p-5 text-cream">
-            <div className="flex items-center gap-2 text-gold-300">
+            <div className="flex items-center gap-2 text-forest-400">
               <LifeBuoy size={14} />
               <p className="text-[10px] font-bold uppercase tracking-[0.16em]">Need more help?</p>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-forest-200/85">
+            <p className="mt-2 text-xs leading-relaxed text-white/70">
               Reply above to keep everything in one thread. For a new issue, open a separate
               request so it can be routed independently.
             </p>
             <Link
               to="/app/tickets/new"
               className={buttonStyles({
-                variant: "gold",
+                variant: "primary",
                 size: "sm",
                 className: "mt-3 w-full",
               })}

@@ -86,7 +86,7 @@ export function SourceBadge({
 export function ProductionBadge({ status }: { status: string }) {
   if (!status.startsWith("In Production")) {
     return (
-      <Badge className="bg-forest-50 text-forest-700 ring-forest-200" dot="bg-forest-500">
+      <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200" dot="bg-emerald-500">
         Published
       </Badge>
     );

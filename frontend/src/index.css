@@ -17,7 +17,7 @@
   }
 
   ::selection {
-    @apply bg-gold-200 text-ink;
+    @apply bg-forest-200 text-ink;
   }
 
   h1,
@@ -28,7 +28,7 @@
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: #c9c2b2 transparent;
+    scrollbar-color: #d6d2ca transparent;
   }
 
   *::-webkit-scrollbar {
@@ -37,7 +37,7 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background-color: #cfc8b8;
+    background-color: #d6d2ca;
     border-radius: 999px;
     border: 2px solid transparent;
     background-clip: content-box;
@@ -52,7 +52,7 @@
 @layer components {
   .paper-grid {
     background-image:
-      radial-gradient(circle at 1px 1px, rgba(22, 33, 27, 0.055) 1px, transparent 0);
+      radial-gradient(circle at 1px 1px, rgba(23, 23, 23, 0.05) 1px, transparent 0);
     background-size: 22px 22px;
   }
 
@@ -99,7 +99,7 @@
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #ece7db 25%, #f6f2e9 50%, #ece7db 75%);
+  background: linear-gradient(90deg, #eeece7 25%, #f8f7f4 50%, #eeece7 75%);
   background-size: 800px 100%;
   animation: shimmer 1.4s linear infinite;
 }
