@@ -223,6 +223,8 @@ docker compose up -d db
 
 The repository ships host-agnostic Docker images. On a VPS, clone the private repo, create a root `.env` with a rotated `JWT_SECRET`, then run `docker compose up -d --build`; nginx serves the SPA on port 5173 and proxies `/api` to the backend. For a managed platform (Render, Railway, Fly.io, ECS), deploy `backend/Dockerfile` and `frontend/Dockerfile` as two services, point `DATABASE_URL` at managed Postgres, and use `alembic upgrade head && python -m app.seed` as the release command. Build the frontend with `VITE_API_BASE_URL=/api` and route `/api/*` to the backend service.
 
+A complete AWS EC2 walkthrough — instance sizing, security group, Docker install, Compose `.env`, HTTPS with certbot, backups, hardening and scaling — is in **[docs/DEPLOY_AWS.md](docs/DEPLOY_AWS.md)**.
+
 ---
 
 ## Configuration
