@@ -79,7 +79,7 @@ status states, so semantic meaning survives the rebrand.
 | API | Python 3.11–3.14, FastAPI 0.162, Pydantic v2 |
 | Persistence | SQLAlchemy 2.1 async, asyncpg, Alembic |
 | Auth | JWT (PyJWT) + Passlib/bcrypt, role-based dependencies |
-| AI | OpenAI-compatible provider factory, Anthropic native client, deterministic rules fallback |
+| AI | OpenAI-compatible provider factory, Anthropic native client, Google AI Studio (Gemini) client, deterministic rules fallback |
 | Realtime | Server-Sent Events (`sse-starlette`) with polling fallback in the client |
 | Frontend | React 18, Vite 5, TypeScript 5.7, Tailwind CSS 3, TanStack Query 5, React Router 6, Lucide |
 | Tests | pytest + pytest-asyncio + httpx ASGI transport |
@@ -248,10 +248,10 @@ Backend configuration is validated by Pydantic Settings and loaded from `backend
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `AI_PROVIDER` | `mock` | `mock`, `openai`, `anthropic`, `slm_cloud`, `slm_local` |
-| `AI_BASE_URL` | OpenAI | Any OpenAI-compatible endpoint (Groq, Together, Ollama, vLLM) |
-| `AI_API_KEY` | empty | Not needed for `mock` or keyless local runtimes |
-| `AI_MODEL` | `gpt-4o-mini` | Provider-specific model ID |
+| `AI_PROVIDER` | `mock` | `mock`, `openai`, `anthropic`, `google`, `slm_cloud`, `slm_local` (`gemini` is an alias) |
+| `AI_BASE_URL` | OpenAI | Any OpenAI-compatible endpoint (Groq, Together, Ollama, vLLM). Ignored for Anthropic; defaults to the Gemini API root for `google` |
+| `AI_API_KEY` | empty | Not needed for `mock` or keyless local runtimes. For Google use a key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| `AI_MODEL` | `gpt-4o-mini` | Provider-specific model ID. With `AI_PROVIDER=google` the OpenAI default resolves to `gemini-3.8-flash` |
 | `AI_TIMEOUT_SECONDS` | `8` | Per-attempt timeout |
 | `AI_MAX_RETRIES` | `1` | One immediate retry on transport/5xx errors |
 | `AI_TOTAL_TIMEOUT_SECONDS` | `20` | Hard ceiling across retries and fallback |
@@ -276,6 +276,7 @@ The brief asks for a provider-agnostic AI layer, not a hard dependency on one ve
 1. **Provider factory** (`app/services/ai_service.py`)
    - OpenAI, Groq/Together, Ollama and vLLM all speak the OpenAI Chat Completions protocol; only base URL, model and key change.
    - Anthropic uses its native messages API.
+   - Google AI Studio (Gemini) uses the native `generateContent` REST API over `httpx` — `POST /v1beta/models/{model}:generateContent` with an `x-goog-api-key` header, a `systemInstruction` block and `responseMimeType: application/json` for schema-bound output. No extra SDK dependency.
    - A provider without credentials is never called; the service falls back to the deterministic rules engine.
 2. **Strict JSON contract**
    - The model must return `{ "category": ..., "priority": ..., "draft_response": ... }` (plus optional confidence/rationale).
@@ -293,6 +294,17 @@ The brief asks for a provider-agnostic AI layer, not a hard dependency on one ve
    - `AI_PROVIDER=mock` runs `RuleEngine` (`bookleaf-rules-v1`): deterministic keyword/category/priority scoring plus context-aware drafts for royalty, printing, distribution, production, ISBN and general inquiries.
    - This keeps the demo fully reproducible without API keys while the real provider path remains production code.
 
+| `AI_PROVIDER` | Wire protocol | Key required | Example `AI_MODEL` |
+| --- | --- | --- | --- |
+| `openai` | OpenAI Chat Completions | Yes | `gpt-4o-mini` |
+| `anthropic` | Anthropic Messages (native SDK) | Yes | `claude-3-5-haiku-latest` |
+| `google` / `gemini` | Gemini `generateContent` (REST via `httpx`) | Yes | `gemini-3.8-flash` |
+| `slm_cloud` | OpenAI-compatible (Groq/Together) | Yes | `llama-3.1-8b-instant` |
+| `slm_local` | OpenAI-compatible (Ollama/vLLM) | No | `llama3.2:3b` |
+| `mock` | Local deterministic rule engine | No | `bookleaf-rules-v1` |
+
+Switching providers is an `.env` change only. Any configured provider that fails is retried and then degraded, so a bad key or an outage never blocks ticket creation.
+
 **What the model is allowed to see** is deliberately narrow. Internal notes are never included in prompts; only public ticket description plus author/book facts are sent. The generated draft is stored on the ticket, returned only to admins, and omitted from every author serialization path.
 
 ### Hybrid LLM/SLM strategy: how the ~85% cost reduction is achieved
@@ -306,7 +318,7 @@ Support drafting is a good fit for small open-weight models: most tickets fall i
 
 On the cost side, a compact prompt plus a short completion on a hosted 8B SLM typically prices at roughly **10–20% of an equivalent frontier-model call** — an ~80–90% reduction, commonly summarised as **~85%** — for the share of volume routed to it. Local Ollama/vLLM goes further: no per-token fee, only compute capacity. The exact saving depends on provider pricing and ticket mix, so the application exposes token/latency counters at `/api/admin/ai/health` and keeps provider selection configurable instead of hard-coding a claim.
 
-The commented default commercial preset is `gpt-4o-mini` because it is inexpensive, fast enough for synchronous triage and reliable at strict JSON; Claude Haiku is a drop-in alternative through `AI_PROVIDER=anthropic`. The repository itself defaults to `mock` so reviewers can run the full flow without an API key — switching to a real provider is one environment-variable change.
+The commented default commercial preset is `gpt-4o-mini` because it is inexpensive, fast enough for synchronous triage and reliable at strict JSON; Claude Haiku (`AI_PROVIDER=anthropic`) and Google's `gemini-3.8-flash` (`AI_PROVIDER=google`) are drop-in alternatives. The repository itself defaults to `mock` so reviewers can run the full flow without an API key — switching to a real provider is one environment-variable change.
 
 ## API surface
 

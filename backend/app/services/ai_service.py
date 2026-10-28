@@ -6,6 +6,8 @@ Provider support
   Completions protocol, so one async client covers OpenAI, Groq, Together,
   Ollama and vLLM. Only base URL + model change.
 * ``anthropic`` uses the native async SDK.
+* ``google`` calls the Gemini API (Google AI Studio) over REST with ``httpx``:
+  ``POST /v1beta/models/{model}:generateContent`` and ``x-goog-api-key``.
 * ``mock`` (or a real provider with no key) uses the deterministic BookLeaf
   rule engine so the demo never depends on someone else's uptime.
 
@@ -30,7 +32,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from app.config import Settings, settings as default_settings
+from app.config import GOOGLE_DEFAULT_MODEL, Settings, settings as default_settings
 from app.models.enums import TicketCategory, TicketPriority
 from app.schemas.ai import AIDraftOnly, AITriageOnly, AITriageResult, VALID_CATEGORIES, VALID_PRIORITIES
 from app.services import kb_context
@@ -49,7 +51,14 @@ from app.services.rule_engine import MODEL_NAME as RULE_MODEL_NAME, RuleEngine
 
 logger = logging.getLogger(__name__)
 
-ProviderKind = Literal["openai", "anthropic"]
+ProviderKind = Literal["openai", "anthropic", "google"]
+
+#: Gemini API root. The model and ``:generateContent`` are appended per call.
+GOOGLE_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+
+#: Models that expose the ``thinkingConfig.thinkingLevel`` control (Gemini 3+).
+#: Sending it to an older model is a hard 400, so it is opt-in by model prefix.
+_GOOGLE_THINKING_PREFIXES = ("gemini-3", "gemini-4")
 
 
 # ---------------------------------------------------------------------------
@@ -153,16 +162,53 @@ def _extract_json(text: str) -> dict[str, Any]:
     return {str(key).strip().lower(): value for key, value in data.items()}
 
 
+def _google_model(model: str) -> str:
+    """Resolve a Gemini model ID, ignoring OpenAI/Anthropic preset leftovers."""
+    cleaned = (model or "").strip()
+    if cleaned.startswith("models/"):
+        cleaned = cleaned[len("models/") :]
+    if not cleaned or cleaned.lower() in {"gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"}:
+        return GOOGLE_DEFAULT_MODEL
+    return cleaned
+
+
+def _google_base_url(base_url: str | None) -> str:
+    """Default to the Gemini API root; ignore an inherited OpenAI base URL."""
+    cleaned = (base_url or "").strip().rstrip("/")
+    if not cleaned or "api.openai.com" in cleaned:
+        return GOOGLE_BASE_URL
+    return cleaned
+
+
+def _google_error_detail(response: Any) -> str:
+    """Pull Google's ``error.message`` out of an error response."""
+    try:
+        payload = response.json()
+    except ValueError:
+        return (getattr(response, "text", "") or "").strip()[:220] or "no response body"
+    error = payload.get("error") if isinstance(payload, dict) else None
+    if isinstance(error, dict):
+        message = str(error.get("message") or "").strip()
+        if message:
+            status = str(error.get("status") or "").strip()
+            return f"{status}: {message}"[:220] if status else message[:220]
+    text = (getattr(response, "text", "") or "").strip()
+    return text[:220] or "no response body"
+
+
 class AIService:
     def __init__(
         self,
         app_settings: Settings | None = None,
         rule_engine: RuleEngine | None = None,
         metrics: AIMetrics | None = None,
+        http_transport: Any | None = None,
     ) -> None:
         self.settings = app_settings or default_settings
         self.rule_engine = rule_engine or RuleEngine()
         self.metrics = metrics or AIMetrics()
+        # Optional httpx transport, used by tests to mock the Gemini endpoint.
+        self._http_transport = http_transport
 
     # -- provider resolution ------------------------------------------------
     def _spec_for(
@@ -179,6 +225,16 @@ class AIService:
             if not api_key:
                 return None
             return ProviderSpec(provider, "anthropic", model, base_url, api_key)
+        if provider in {"google", "gemini"}:
+            if not api_key:
+                return None
+            return ProviderSpec(
+                "google",
+                "google",
+                _google_model(model),
+                _google_base_url(base_url),
+                api_key,
+            )
         if provider in {"openai", "slm_cloud", "slm_local"}:
             if provider != "slm_local" and not api_key:
                 return None
@@ -594,6 +650,8 @@ class AIService:
     ) -> tuple[str, dict | None]:
         if spec.kind == "anthropic":
             return await self._complete_anthropic(spec, system, user, max_tokens)
+        if spec.kind == "google":
+            return await self._complete_google(spec, system, user, max_tokens)
         return await self._complete_openai(spec, system, user, max_tokens)
 
     async def _complete_openai(
@@ -688,6 +746,101 @@ class AIService:
             usage = {
                 "prompt_tokens": getattr(response.usage, "input_tokens", 0),
                 "completion_tokens": getattr(response.usage, "output_tokens", 0),
+            }
+        return text, usage
+
+    # -- Google AI Studio (Gemini) -----------------------------------------
+    def _google_generation_config(self, spec: ProviderSpec, max_tokens: int) -> dict[str, Any]:
+        config: dict[str, Any] = {
+            "temperature": self.settings.ai_temperature,
+            "maxOutputTokens": max_tokens,
+            # Gemini's JSON mode: the model is constrained to RFC 8259 JSON.
+            "responseMimeType": "application/json",
+        }
+        if spec.model.startswith(_GOOGLE_THINKING_PREFIXES):
+            # Gemini 3+ counts reasoning tokens against maxOutputTokens. A long
+            # default "medium" thought budget can truncate a 700-token reply,
+            # so keep reasoning shallow for this short, schema-bound task.
+            config["thinkingConfig"] = {"thinkingLevel": "low"}
+        return config
+
+    async def _post_gemini(
+        self, url: str, headers: dict[str, str], payload: dict[str, Any]
+    ) -> Any:
+        import httpx
+
+        async with httpx.AsyncClient(
+            timeout=self.settings.ai_timeout_seconds,
+            transport=self._http_transport,
+        ) as client:
+            return await asyncio.wait_for(
+                client.post(url, headers=headers, json=payload),
+                timeout=self.settings.ai_timeout_seconds,
+            )
+
+    async def _complete_google(
+        self, spec: ProviderSpec, system: str, user: str, max_tokens: int
+    ) -> tuple[str, dict | None]:
+        url = f"{spec.base_url or GOOGLE_BASE_URL}/models/{spec.model}:generateContent"
+        payload: dict[str, Any] = {
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": user}]}],
+            "generationConfig": self._google_generation_config(spec, max_tokens),
+        }
+        headers = {
+            "x-goog-api-key": spec.api_key or "",
+            "Content-Type": "application/json",
+        }
+
+        response = await self._post_gemini(url, headers, payload)
+
+        # ``thinkingConfig`` is Gemini 3+ only. If a gateway or an older model
+        # rejects it, drop the control and retry once rather than failing.
+        detail = _google_error_detail(response)
+        if (
+            response.status_code in {400, 404}
+            and "thinking" in detail.lower()
+            and "thinkingConfig" in payload["generationConfig"]
+        ):
+            logger.info("Gemini rejected thinkingConfig for %s; retrying without it", spec.model)
+            payload["generationConfig"].pop("thinkingConfig", None)
+            response = await self._post_gemini(url, headers, payload)
+            detail = _google_error_detail(response)
+
+        if response.status_code >= 400:
+            raise AIProviderError(f"Google AI Studio HTTP {response.status_code}: {detail}")
+
+        try:
+            body = response.json()
+        except ValueError as exc:
+            raise AIProviderError("Google AI Studio returned a non-JSON body") from exc
+        if not isinstance(body, dict):
+            raise AIProviderError("Google AI Studio returned an unexpected payload")
+
+        block_reason = (body.get("promptFeedback") or {}).get("blockReason")
+        if block_reason:
+            raise AIProviderError(f"Google blocked the prompt ({block_reason})")
+
+        candidates = body.get("candidates") or []
+        if not candidates:
+            raise AIProviderError("Google AI Studio returned no candidates")
+        candidate = candidates[0] if isinstance(candidates[0], dict) else {}
+        parts = (candidate.get("content") or {}).get("parts") or []
+        text = "".join(
+            str(part.get("text") or "")
+            for part in parts
+            if isinstance(part, dict) and not part.get("thought")
+        ).strip()
+        if not text:
+            finish = candidate.get("finishReason") or "unknown"
+            raise AIProviderError(f"Google returned an empty message (finishReason={finish})")
+
+        usage = None
+        usage_meta = body.get("usageMetadata") or {}
+        if usage_meta:
+            usage = {
+                "prompt_tokens": int(usage_meta.get("promptTokenCount") or 0),
+                "completion_tokens": int(usage_meta.get("candidatesTokenCount") or 0),
             }
         return text, usage
 

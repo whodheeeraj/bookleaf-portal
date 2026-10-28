@@ -7,6 +7,7 @@ import json
 from dataclasses import dataclass
 from datetime import date
 
+import httpx
 import pytest
 
 from app.config import Settings
@@ -222,6 +223,178 @@ def test_provider_factory_resolves_openai_anthropic_and_local():
     keyless = AIService(Settings(ai_provider="openai", ai_api_key=None))
     assert keyless.primary is None
     assert keyless.health()["mode"] == "rule_engine"
+
+
+def test_provider_factory_resolves_google_ai_studio():
+    service = AIService(Settings(ai_provider="google", ai_api_key="AIza-test"))
+    assert service.primary is not None
+    assert service.primary.kind == "google"
+    assert service.primary.provider == "google"
+    # AI_MODEL defaults to the OpenAI preset, which must not be sent to Gemini.
+    assert service.primary.model == "gemini-3.8-flash"
+    assert service.primary.base_url == "https://generativelanguage.googleapis.com/v1beta"
+    assert service.health()["provider"] == "google"
+    assert service.health()["mode"] == "llm"
+
+    # `gemini` is accepted as a friendlier alias, and explicit models are kept.
+    alias = AIService(
+        Settings(ai_provider="gemini", ai_api_key="AIza-test", ai_model="gemini-3.6-flash")
+    )
+    assert alias.primary is not None
+    assert alias.primary.provider == "google"
+    assert alias.primary.model == "gemini-3.6-flash"
+
+    # No key: never call Google unauthenticated, use the rule engine instead.
+    keyless = AIService(Settings(ai_provider="google", ai_api_key=None))
+    assert keyless.primary is None
+    assert keyless.health()["mode"] == "rule_engine"
+    assert keyless.health()["provider"] == "google"
+
+
+def _gemini_reply(payload: dict, *, finish_reason: str = "STOP") -> dict:
+    return {
+        "candidates": [
+            {
+                "content": {"parts": [{"text": json.dumps(payload)}]},
+                "finishReason": finish_reason,
+            }
+        ],
+        "usageMetadata": {"promptTokenCount": 412, "candidatesTokenCount": 198},
+    }
+
+
+def test_google_provider_calls_gemini_and_parses_the_json_contract():
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["key"] = request.headers.get("x-goog-api-key")
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json=_gemini_reply(
+                {
+                    "category": "Royalty & Payments",
+                    "priority": "High",
+                    "confidence": 0.86,
+                    "rationale": "Royalty unpaid beyond the policy window",
+                    "draft_response": "Dear Kavita,\n\nThank you for flagging the pending royalty.",
+                }
+            ),
+        )
+
+    service = AIService(
+        Settings(ai_provider="google", ai_api_key="AIza-test"),
+        http_transport=httpx.MockTransport(handler),
+    )
+    ticket = TicketSnapshot(
+        subject="Royalty payment not received",
+        description="The last quarter transfer is still unpaid. Please check.",
+    )
+    outcome = asyncio.run(
+        service.triage_and_draft(
+            author=AUTHOR,
+            book=PUBLISHED_BOOK,
+            books=[PUBLISHED_BOOK],
+            ticket=ticket,
+            today=TODAY,
+        )
+    )
+
+    assert outcome.ai_classified is True
+    assert outcome.degraded is False
+    assert outcome.category is TicketCategory.ROYALTY
+    assert outcome.priority is TicketPriority.HIGH
+    assert outcome.confidence == pytest.approx(0.86)
+    assert outcome.model_used == "gemini-3.8-flash"
+    assert outcome.draft_response.startswith("Dear Kavita,")
+
+    assert seen["url"].endswith("/v1beta/models/gemini-3.8-flash:generateContent")
+    assert seen["key"] == "AIza-test"
+
+    sent = seen["body"]
+    assert sent["generationConfig"]["responseMimeType"] == "application/json"
+    assert sent["generationConfig"]["maxOutputTokens"] == 700
+    # Gemini 3+ accepts the thinking control; reasoning is kept shallow so a
+    # 700-token budget is not consumed before the JSON reply is written.
+    assert sent["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "low"}
+    assert sent["systemInstruction"]["parts"][0]["text"]
+    assert "TICKET" in sent["contents"][0]["parts"][0]["text"]
+
+    metrics = service.metrics.snapshot()
+    assert metrics["calls"] == 1
+    assert metrics["prompt_tokens"] == 412
+    assert metrics["completion_tokens"] == 198
+    assert metrics["last_model"] == "gemini-3.8-flash"
+
+
+def test_google_blocked_prompt_degrades_instead_of_inventing_a_ticket():
+    calls = {"n": 0}
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(200, json={"promptFeedback": {"blockReason": "SAFETY"}})
+
+    service = AIService(
+        Settings(ai_provider="google", ai_api_key="AIza-test"),
+        http_transport=httpx.MockTransport(handler),
+    )
+    ticket = TicketSnapshot(
+        subject="Royalty payment not received",
+        description="The last quarter transfer is still unpaid.",
+    )
+    outcome = asyncio.run(
+        service.triage_and_draft(
+            author=AUTHOR,
+            book=PUBLISHED_BOOK,
+            books=[PUBLISHED_BOOK],
+            ticket=ticket,
+            today=TODAY,
+        )
+    )
+
+    assert calls["n"] == 2  # one automatic retry before degrading
+    assert outcome.ai_classified is False
+    assert outcome.degraded is True
+    assert outcome.category is TicketCategory.GENERAL
+    assert outcome.priority is TicketPriority.MEDIUM
+    assert outcome.draft_response is None
+    assert "blocked" in (outcome.error or "").lower()
+
+
+def test_google_http_errors_surface_the_api_message():
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            403,
+            json={
+                "error": {
+                    "code": 403,
+                    "message": "API key not valid. Please pass a valid API key.",
+                    "status": "PERMISSION_DENIED",
+                }
+            },
+        )
+
+    service = AIService(
+        Settings(ai_provider="google", ai_api_key="bad-key"),
+        http_transport=httpx.MockTransport(handler),
+    )
+    ticket = TicketSnapshot(subject="Where is my royalty?", description="Still waiting.")
+    outcome = asyncio.run(
+        service.triage_and_draft(
+            author=AUTHOR,
+            book=PUBLISHED_BOOK,
+            books=[PUBLISHED_BOOK],
+            ticket=ticket,
+            today=TODAY,
+        )
+    )
+
+    assert outcome.ai_classified is False
+    assert outcome.degraded is True
+    error = outcome.error or ""
+    assert "HTTP 403" in error
+    assert "API key not valid" in error
 
 
 def test_provider_failure_degrades_to_manual_triage(monkeypatch: pytest.MonkeyPatch):

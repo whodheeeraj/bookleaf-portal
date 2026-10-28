@@ -5,11 +5,25 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-AIProvider = Literal["mock", "openai", "anthropic", "slm_cloud", "slm_local"]
+AIProvider = Literal["mock", "openai", "anthropic", "google", "slm_cloud", "slm_local"]
 Environment = Literal["development", "staging", "production", "test"]
+
+#: Gemini model used when AI_PROVIDER=google and no Google-specific AI_MODEL is set.
+GOOGLE_DEFAULT_MODEL = "gemini-3.8-flash"
+
+#: Friendly spellings accepted for AI_PROVIDER / AI_FALLBACK_PROVIDER.
+_PROVIDER_ALIASES = {
+    "gemini": "google",
+    "google_ai": "google",
+    "google_aistudio": "google",
+    "google_ai_studio": "google",
+}
+
+#: Model IDs from other providers' presets; remapped when the provider is Google.
+_FOREIGN_DEFAULT_MODELS = {"", "gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"}
 
 
 class Settings(BaseSettings):
@@ -70,6 +84,31 @@ class Settings(BaseSettings):
     sse_heartbeat_seconds: int = 15
 
     # --- validators --------------------------------------------------------
+    @field_validator("ai_provider", "ai_fallback_provider", mode="before")
+    @classmethod
+    def _normalise_provider(cls, value: object) -> object:
+        """Accept ``gemini`` (and a few spellings) as an alias for ``google``."""
+        if isinstance(value, str):
+            cleaned = value.strip().lower().replace("-", "_")
+            return _PROVIDER_ALIASES.get(cleaned, cleaned)
+        return value
+
+    @model_validator(mode="after")
+    def _resolve_provider_model(self) -> Settings:
+        """Avoid sending another vendor's model ID to Gemini.
+
+        ``AI_MODEL`` defaults to the OpenAI preset, so ``AI_PROVIDER=google``
+        alone would otherwise ask Google for ``gpt-4o-mini``.
+        """
+        if self.ai_provider == "google" and self.ai_model.strip().lower() in _FOREIGN_DEFAULT_MODELS:
+            self.ai_model = GOOGLE_DEFAULT_MODEL
+        if (
+            self.ai_fallback_provider == "google"
+            and (self.ai_fallback_model or "").strip().lower() in _FOREIGN_DEFAULT_MODELS
+        ):
+            self.ai_fallback_model = GOOGLE_DEFAULT_MODEL
+        return self
+
     @field_validator("database_url")
     @classmethod
     def _coerce_async_driver(cls, value: str) -> str:

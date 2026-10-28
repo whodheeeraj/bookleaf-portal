@@ -80,7 +80,7 @@ flowchart LR
     end
 
     subgraph "Optional external AI"
-        LLM["OpenAI / Anthropic /<br/>Groq / Together / Ollama"]
+        LLM["OpenAI / Anthropic / Google AI Studio /<br/>Groq / Together / Ollama"]
     end
 
     SPA -->|"HTTPS :5173"| NGX
@@ -654,11 +654,21 @@ Important distinction:
 | `mock` | Local rule engine | No | Offline demo, tests |
 | `openai` | OpenAI Chat Completions | Yes | Hosted frontier/cheap model |
 | `anthropic` | Anthropic Messages API | Yes | Claude family |
+| `google` / `gemini` | Gemini `generateContent` REST | Yes | Gemini 3.x Flash/Pro |
 | `slm_cloud` | OpenAI-compatible (Groq/Together) | Yes | Hosted small model |
 | `slm_local` | OpenAI-compatible (Ollama/vLLM) | No | On-prem small model |
 
 `ProviderSpec` resolves provider, model, base URL and key. `AI_BASE_URL` and `AI_MODEL` are the
 only changes needed to switch between OpenAI, Groq, Together, Ollama and vLLM.
+
+Google AI Studio is the one non-SDK transport: `_complete_google` posts to
+`{base}/models/{model}:generateContent` with `x-goog-api-key`, sends the system prompt as
+`systemInstruction`, and asks for `responseMimeType: application/json` so the same Pydantic
+contract validation applies. Requests are issued with `httpx` (already a dependency), the
+`thinkingConfig.thinkingLevel` control is added only for Gemini 3+ models (older models reject
+it, and it is retried without the field), and `usageMetadata` is mapped onto the shared
+token counters. Because `AI_MODEL` defaults to `gpt-4o-mini`, selecting `AI_PROVIDER=google`
+without a model resolves to `gemini-3.8-flash` instead of sending an OpenAI model ID to Google.
 
 ### 9.3 Context construction
 
