@@ -386,6 +386,7 @@ business workflow.
     - Username : `dheeraj.sain@email.com`
     - Password : `x5GnK}}7`
 -   **n8n Workflow:**
+    <img width="797" height="359" alt="n8nwf" src="https://github.com/user-attachments/assets/8b0a389a-bc81-4804-a772-92e6da5fffbd" />
     
 
 
