@@ -1,4 +1,5 @@
-# BookLeaf Publishing -- Author Royalty Dashboard & Notification System
+# BookLeaf Publishing - Author Royalty Dashboard & Notification System
+[By Dheeraj Sain](https://whodheeeraj.github.io/)
 
 ## 1. Project Overview
 
@@ -81,33 +82,14 @@ data reference.
 
 ## 4. Database Design
 
-The application separates user login information, author information,
-book information, and notification records.
+The application separates user login information, author information, book information, and notification records.
 
-  -----------------------------------------------------------------------
-  Data type                           Purpose
-  ----------------------------------- -----------------------------------
-  User                                Stores login identity and role
-                                      information, including the link to
-                                      an author profile where applicable.
-
-  Author                              Stores author details such as
-                                      author ID, name, email, city,
-                                      phone, joining date, and payout
-                                      information.
-
-  Book                                Stores book details and its
-                                      relationship to the relevant
-                                      author, including title, ISBN,
-                                      genre, MRP, publication/status
-                                      information, platform availability,
-                                      sales, and royalty figures.
-
-  NotificationLog                     Stores royalty-summary notification
-                                      information, including the author,
-                                      notification identifier, status,
-                                      and generated summary content.
-  -----------------------------------------------------------------------
+| Data Type | Purpose |
+| --- | --- |
+| User | Stores login identity and role information, including the link to an author profile where applicable. |
+| Author | Stores author details such as author ID, name, email, city, phone, joining date, and payout information. |
+| Book | Stores book details and its relationship to the relevant author, including title, ISBN, genre, MRP, publication/status information, platform availability, sales, and royalty figures. |
+| NotificationLog | Stores royalty-summary notification information, including the author, notification identifier, status, and generated summary content. |
 
 ### Relationships
 
@@ -144,30 +126,20 @@ is to call the same n8n webhook for each eligible author with pending
 royalties. Test the bulk workflow to confirm that it processes each
 eligible author separately and does not send duplicate requests.
 
-### Webhook payload
+### Webhook Payload
 
-The Bubble API request uses these fields:
+The Bubble API request uses the following fields:
 
-  -----------------------------------------------------------------------
-  Field                               Description
-  ----------------------------------- -----------------------------------
-  author_id                           Author's identifier
-
-  notification_log_id                 Identifier of the Bubble
-                                      NotificationLog record
-
-  author_name                         Author's name
-
-  author_email                        Author's email address
-
-  total_earned                        Consolidated royalty earned
-
-  total_paid                          Consolidated royalty paid
-
-  total_pending                       Consolidated royalty pending
-
-  books                               Book information for the author
-  -----------------------------------------------------------------------
+| Field | Description |
+| --- | --- |
+| `author_id` | Author's identifier. |
+| `notification_log_id` | Identifier of the Bubble NotificationLog record. |
+| `author_name` | Author's name. |
+| `author_email` | Author's email address. |
+| `total_earned` | Consolidated royalty earned. |
+| `total_paid` | Consolidated royalty paid. |
+| `total_pending` | Consolidated royalty pending. |
+| `books` | Book information for the author. |
 
 Bubble calculates the royalty totals and retrieves the related books
 before sending the request. This keeps the initial integration
@@ -304,53 +276,24 @@ starting another execution.
 
 ## 9. Testing
 
-Complete and record these test cases before submission.
+Complete and record the following test cases before submission.
 
-  -----------------------------------------------------------------------
-  Test case                           Expected result
-  ----------------------------------- -----------------------------------
-  Author logs in                      Author dashboard opens.
-
-  Author views their books            Only books linked to that author
-                                      are displayed.
-
-  Author views royalty totals         Totals match the related book
-                                      records.
-
-  Author attempts to access another   Access is denied.
-  author's data                       
-
-  Admin logs in                       Admin dashboard displays the author
-                                      overview.
-
-  Admin searches for an author        Matching author records are
-                                      displayed.
-
-  Admin filters by city or payout     Results match the selected filter.
-  status                              
-
-  Admin triggers an individual        Bubble sends a request to n8n.
-  summary                             
-
-  n8n receives a valid request        Workflow starts and processes the
-                                      payload.
-
-  AI generates a summary              Generated text is available in the
-                                      workflow output.
-
-  n8n stores the summary              A row is created in
-                                      `royalty_summaries`.
-
-  Invalid webhook authentication      Request is rejected.
-
-  AI or workflow node fails           Failure is logged and the
-                                      notification is marked Failed once
-                                      callback handling is complete.
-
-  Bulk trigger is used                Each eligible author is processed
-                                      separately without unintended
-                                      duplicates.
-  -----------------------------------------------------------------------
+| Test Case | Expected Result |
+| --- | --- |
+| Author logs in | Author dashboard opens. |
+| Author views their books | Only books linked to that author are displayed. |
+| Author views royalty totals | Totals match the related book records. |
+| Author attempts to access another author's data | Access is denied. |
+| Admin logs in | Admin dashboard displays the author overview. |
+| Admin searches for an author | Matching author records are displayed. |
+| Admin filters by city or payout status | Results match the selected filter. |
+| Admin triggers an individual summary | Bubble sends a request to n8n. |
+| n8n receives a valid request | Workflow starts and processes the payload. |
+| AI generates a summary | Generated text is available in the workflow output. |
+| n8n stores the summary | A row is created in `royalty_summaries`. |
+| Invalid webhook authentication | Request is rejected. |
+| AI or workflow node fails | Failure is logged and the notification is marked Failed once callback handling is complete. |
+| Bulk trigger is used | Each eligible author is processed separately without unintended duplicates. |
 
 ## 10. Challenges and Learning
 
